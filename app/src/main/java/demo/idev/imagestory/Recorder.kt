@@ -84,7 +84,7 @@ class Recorder(
   }
 
   private fun createMediaMuxer(output: File) {
-    if (VERBOSE) Log.d("TAG", "inputSurface will go to $output")
+    if (VERBOSE) Log.d("Recorder", "inputSurface will go to $output")
 
     muxer = MediaMuxer(
         output.toString(),
@@ -114,7 +114,7 @@ class Recorder(
     videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
     videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, framesPerSecond)
     videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval)
-    if (VERBOSE) Log.d("TAG", "format: $videoFormat")
+    if (VERBOSE) Log.d("Recorder", "format: $videoFormat")
     return videoFormat
   }
 
@@ -128,10 +128,10 @@ class Recorder(
    */
   @SuppressLint("SwitchIntDef")
   private fun drainEncoder(endOfStream: Boolean) {
-    if (VERBOSE) Log.d("TAG", "drainEncoder($endOfStream)")
+    if (VERBOSE) Log.d("Recorder", "drain encoder($endOfStream)")
 
     if (endOfStream) {
-      Log.d("TAG", "sending end of stream to videoEncoder")
+      Log.d("Recorder", "sending end of stream to videoEncoder")
       videoEncoder.signalEndOfInputStream()
     }
 
@@ -147,7 +147,7 @@ class Recorder(
           if (!endOfStream) {
             break@encodeLoop // out of while
           } else {
-            if (VERBOSE) Log.d("TAG", "no inputSurface available, spinning to await EOS")
+            if (VERBOSE) Log.d("Recorder", "no inputSurface available, spinning to await EOS")
           }
         }
         outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
@@ -161,7 +161,7 @@ class Recorder(
               )
           ) break@encodeLoop
         }
-        else -> Log.w("TAG", "unexpected result from videoEncoder.dequeueOutputBuffer: $outputBufferIndex")
+        else -> Log.w("Recorder", "unexpected result from videoEncoder.dequeueOutputBuffer: $outputBufferIndex")
       }
     }
   }
@@ -172,7 +172,7 @@ class Recorder(
       throw RuntimeException("format changed twice")
     }
     val newFormat = videoEncoder.outputFormat
-    Log.d("TAG", "videoEncoder inputSurface format changed: $newFormat")
+    Log.d("Recorder", "videoEncoder inputSurface format changed: $newFormat")
 
     trackIndex = muxer.addTrack(newFormat)
     muxer.start()
@@ -183,7 +183,7 @@ class Recorder(
     if (videoBufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
       // The codec config data was pulled out and fed to the muxer when we got
       // the INFO_OUTPUT_FORMAT_CHANGED status. Ignore it.
-      if (VERBOSE) Log.d("TAG", "ignoring BUFFER_FLAG_CODEC_CONFIG")
+      if (VERBOSE) Log.d("Recorder", "ignoring BUFFER_FLAG_CODEC_CONFIG")
       videoBufferInfo.size = 0
     }
 
@@ -201,16 +201,16 @@ class Recorder(
       fakePts += 1000000L / framesPerSecond
 
       muxer.writeSampleData(trackIndex, encodedData, videoBufferInfo)
-      if (VERBOSE) Log.d("TAG", "sent ${videoBufferInfo.size} bytes to muxer")
+      if (VERBOSE) Log.d("Recorder", "sent ${videoBufferInfo.size} bytes to muxer")
     }
 
     videoEncoder.releaseOutputBuffer(outputBufferIndex, false)
 
     if (videoBufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
       if (!endOfStream) {
-        Log.w("TAG", "reached endRecording of stream unexpectedly")
+        Log.w("Recorder", "reached endRecording of stream unexpectedly")
       } else {
-        if (VERBOSE) Log.d("TAG", "endRecording of stream reached")
+        if (VERBOSE) Log.d("Recorder", "endRecording of stream reached")
       }
       return true // out of while
     }
@@ -221,7 +221,7 @@ class Recorder(
    * Releases videoEncoder resources. May be called after partial / failed initialization.
    */
   override fun close() {
-    if (VERBOSE) Log.d("TAG", "releasing videoEncoder objects")
+    if (VERBOSE) Log.d("Recorder", "releasing videoEncoder objects")
     videoEncoder.stop()
     videoEncoder.release()
     inputSurface.release()
