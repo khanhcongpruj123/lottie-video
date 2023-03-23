@@ -114,29 +114,31 @@ class MainActivity : AppCompatActivity() {
                 throw IllegalArgumentException("You must read animation data from data.json before convert it!")
             }
 
-            exportVideoExecutor.submit(
-                ExportVideoWorker(
-                    onStart = {
-                        runOnUiThread {
-                            Toast.makeText(applicationContext, "Exporting...", Toast.LENGTH_LONG)
-                                .show()
-                        }
-                    },
-                    onCompleted = {
-                        runOnUiThread {
-                            Toast.makeText(
-                                applicationContext,
-                                "Save to ${it.absolutePath}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    },
-                    binding.preview.composition!!,
-                    VIDEO_WIDHT!!,
-                    VIDEO_HEIGHT!!,
-                    FPS!!
-                )
+            val exportTask = ExportVideoWorker(
+                onStart = {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, "Exporting...", Toast.LENGTH_LONG)
+                            .show()
+                    }
+                },
+                onCompleted = {
+                    runOnUiThread {
+                        Toast.makeText(
+                            applicationContext,
+                            "Save to ${it.absolutePath}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                },
+                binding.preview.composition!!,
+                VIDEO_WIDHT!!,
+                VIDEO_HEIGHT!!,
+                FPS!!
             )
+
+            lifecycleScope.launch(Dispatchers.Default) {
+                exportTask.run()
+            }
         }
 
         // change other image
