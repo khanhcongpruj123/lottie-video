@@ -19,9 +19,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.work.*
+import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.LottieDrawable
 import demo.idev.imagestory.databinding.ActivityMainBinding
+import demo.idev.imagestory.renderer.FrameCreator
+import demo.idev.imagestory.renderer.RecordingOperation
+import demo.idev.imagestory.renderer.v1.MediaCodecRecorder
+import demo.idev.imagestory.renderer.v2.FFmpegRecorder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -159,19 +164,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         // check permission, request if it is denied
-        when {
-            ContextCompat.checkSelfPermission(
-                applicationContext,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                validateTemplateData()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    validateTemplateData()
+                }
+                else -> {
+                    requestPermissions(
+                        arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                        REQUEST_PERMISSION_CODE
+                    )
+                }
             }
-            else -> {
-                requestPermissions(
-                    arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    REQUEST_PERMISSION_CODE
-                )
-            }
+        } else {
+            validateTemplateData()
         }
     }
 
@@ -260,6 +269,7 @@ class MainActivity : AppCompatActivity() {
      * */
     inner class DownloadTemplateCompleteReceiver(val downloadId: Long) : BroadcastReceiver() {
 
+        @RequiresApi(Build.VERSION_CODES.O)
         override fun onReceive(context: Context, intent: Intent) {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
 
@@ -271,6 +281,15 @@ class MainActivity : AppCompatActivity() {
                     "Download template success!"
                 )
                 unzipTemplate()
+                // read with and height
+                Log.d(TAG, "Read animation data")
+                templateDataJsonObject =
+                    JSONObject(String(Files.readAllBytes(Path(animationFile.absolutePath))))
+                templateDataJsonObject?.run {
+                    VIDEO_WIDHT = this.getInt("w")
+                    VIDEO_HEIGHT = this.getInt("h")
+                    FPS = ceil(this.getDouble("fr")).toInt()
+                }
             }
         }
     }
@@ -312,12 +331,17 @@ class ExportVideoWorker(
         }
 
         val recordingOperation = RecordingOperation(
-            Recorder(
+            MediaCodecRecorder(
                 videoOutput = outputFile,
                 width = videoWidth,
                 height = videoHeight,
-                framesPerSecond = fps!!
+                framesPerSecond = fps
             ),
+//            FFmpegRecorder(
+//                outputFile,
+//                videoWidth,
+//                videoHeight
+//            ),
             FrameCreator(lottieDrawable, videoWidth, videoHeight)
         )
 

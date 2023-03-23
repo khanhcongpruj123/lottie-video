@@ -1,4 +1,4 @@
-package demo.idev.imagestory
+package demo.idev.imagestory.renderer
 
 import android.graphics.drawable.Drawable
 import com.airbnb.lottie.LottieDrawable

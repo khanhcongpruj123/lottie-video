@@ -1,4 +1,4 @@
-package demo.idev.imagestory
+package demo.idev.imagestory.renderer
 
 import android.util.Log
 
@@ -8,6 +8,7 @@ class RecordingOperation(
 ) {
 
     fun start() {
+        recorder.start()
         while (isRecording()) {
             Log.d(
                 "RecordingOperation",

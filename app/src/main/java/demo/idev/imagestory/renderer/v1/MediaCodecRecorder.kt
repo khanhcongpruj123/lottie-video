@@ -1,4 +1,4 @@
-package demo.idev.imagestory
+package demo.idev.imagestory.renderer.v1
 
 import android.annotation.SuppressLint
 import android.graphics.Color
@@ -10,19 +10,20 @@ import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
 import android.view.Surface
+import demo.idev.imagestory.renderer.Recorder
 import java.io.Closeable
 import java.io.File
 import java.nio.ByteBuffer
 
-class Recorder(
-    mimeType: String = "video/avc",
-    bitRate: Int = DEFAULT_BITRATE,
-    iFrameInterval: Int = DEFAULT_IFRAME_INTERVAL,
-    private val framesPerSecond: Int = DEFAULT_FPS,
-    width: Int,
-    height: Int,
-    videoOutput: File
-) : Closeable {
+class MediaCodecRecorder(
+  var mimeType: String = "video/avc",
+  var bitRate: Int = DEFAULT_BITRATE,
+  var iFrameInterval: Int = DEFAULT_IFRAME_INTERVAL,
+  var framesPerSecond: Int = DEFAULT_FPS,
+  var width: Int,
+  var height: Int,
+  var videoOutput: File
+) : Closeable, Recorder {
 
   private val videoBufferInfo: MediaCodec.BufferInfo = MediaCodec.BufferInfo()
   private lateinit var videoEncoder: MediaCodec
@@ -41,7 +42,18 @@ class Recorder(
     private const val TIMEOUT_USEC = 10000
   }
 
-  init {
+  override fun nextFrame(currentFrame: Drawable) {
+    drainEncoder(false)
+    val canvas = inputSurface.lockCanvas(null)
+    try {
+      canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)  // Here you need to set some kind of background. Could be any color
+      currentFrame.draw(canvas)
+    } finally {
+      inputSurface.unlockCanvasAndPost(canvas)
+    }
+  }
+
+  override fun start() {
     if (width < 0) {
       throw IllegalArgumentException("You must set a positive width")
     }
@@ -67,18 +79,7 @@ class Recorder(
     createMediaMuxer(videoOutput)
   }
 
-  fun nextFrame(currentFrame: Drawable) {
-    drainEncoder(false)
-    val canvas = inputSurface.lockCanvas(null)
-    try {
-      canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)  // Here you need to set some kind of background. Could be any color
-      currentFrame.draw(canvas)
-    } finally {
-      inputSurface.unlockCanvasAndPost(canvas)
-    }
-  }
-
-  fun end() {
+  override fun end() {
     drainEncoder(true)
     close()
   }
@@ -196,7 +197,7 @@ class Recorder(
       encodedData.position(videoBufferInfo.offset)
       encodedData.limit(videoBufferInfo.offset + videoBufferInfo.size)
       videoBufferInfo.presentationTimeUs = fakePts
-      // we save ms length of the video before buffer is disposed:
+      // we save ms length of the video before buffer is disposed
       if (endOfStream) videoLengthInMs = videoBufferInfo.presentationTimeUs
       fakePts += 1000000L / framesPerSecond
 
