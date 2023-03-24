@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -19,14 +20,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.work.*
-import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.LottieDrawable
 import demo.idev.imagestory.databinding.ActivityMainBinding
 import demo.idev.imagestory.renderer.FrameCreator
 import demo.idev.imagestory.renderer.RecordingOperation
 import demo.idev.imagestory.renderer.v1.MediaCodecRecorder
-import demo.idev.imagestory.renderer.v2.FFmpegRecorder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private val TAG = MainActivity::class.java.simpleName
         private val templateUrl =
-            "https://download1522.mediafire.com/qxouy2ho2emgXHz_o-LONxnw0TqqfAXfqgqeW6KM5V0_9iJsxzYN0hR8PQiK_KCu9It8_urEag38E_eXmY5AFXnfoA/uhvos5o56evfun7/template_01.zip"
+            "https://download1486.mediafire.com/yukll7rc7uwgbtccfPvTVtb5N17KLe4JUck_Lk0VrFa3s-tbEgMLZUkE6Y8bx6NPlBe2hCUXPL6v6siQvySIq-ppYw/nzkyvpp19ee4um3/template_02.zip"
         private val REQUEST_PERMISSION_CODE = 5432
     }
 
@@ -54,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var templateDir: File
     private lateinit var animationFile: File
     private lateinit var imageAssetFile: File
+    private lateinit var audioFile: File
 
     private var VIDEO_WIDHT: Int? = null
     private var VIDEO_HEIGHT: Int? = null
@@ -76,12 +76,13 @@ class MainActivity : AppCompatActivity() {
         // int template data
         templateFileZip = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
-            "template_01.zip"
+            "template_02.zip"
         )
         templateDir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
-            "template_01"
+            "template_02"
         )
+        audioFile = File("$templateDir/audio.aac")
         animationFile = File("$templateDir/data.json")
         imageAssetFile = File("$templateDir/images")
 
@@ -134,16 +135,20 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_LONG
                         ).show()
                     }
+
+                    // play video
+                    val mediaIntent = Intent(Intent.ACTION_VIEW, it.absolutePath.toUri())
+                    mediaIntent.setDataAndType(it.absolutePath.toUri(), "video/mp4");
+                    startActivity(mediaIntent)
                 },
                 binding.preview.composition!!,
                 VIDEO_WIDHT!!,
                 VIDEO_HEIGHT!!,
-                FPS!!
+                audioFile,
+                FPS!!,
             )
 
-            lifecycleScope.launch(Dispatchers.Default) {
-                exportTask.run()
-            }
+            exportVideoExecutor.submit(exportTask)
         }
 
         // change other image
@@ -164,7 +169,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // check permission, request if it is denied
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             when {
                 ContextCompat.checkSelfPermission(
                     applicationContext,
@@ -306,6 +311,7 @@ class ExportVideoWorker(
     val lottieComposition: LottieComposition,
     val videoWidth: Int,
     val videoHeight: Int,
+    val audioFile: File,
     val fps: Int
 ) : Runnable {
 
@@ -335,7 +341,8 @@ class ExportVideoWorker(
                 videoOutput = outputFile,
                 width = videoWidth,
                 height = videoHeight,
-                framesPerSecond = fps
+                framesPerSecond = fps,
+                audioFile = audioFile
             ),
 //            FFmpegRecorder(
 //                outputFile,

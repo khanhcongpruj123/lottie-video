@@ -4,6 +4,6 @@ import android.graphics.drawable.Drawable
 
 interface Recorder {
     fun nextFrame(generateFrame: Drawable)
-    fun start();
+    fun start()
     fun end()
 }
